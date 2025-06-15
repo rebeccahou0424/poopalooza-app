@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions, Alert }
 import Colors from '@/constants/colors';
 import { MapPin, Navigation, Compass, List } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 
 // Mock data for nearby bathrooms
@@ -15,8 +14,8 @@ const mockBathrooms = [
     rating: 4.5,
     type: "Café",
     address: "123 Main St",
-    latitude: 0, // Will be dynamically set
-    longitude: 0, // Will be dynamically set
+    latitude: 37.78825,
+    longitude: -122.4324,
   },
   {
     id: '2',
@@ -25,8 +24,8 @@ const mockBathrooms = [
     rating: 3.8,
     type: "Fast Food",
     address: "456 Oak Ave",
-    latitude: 0,
-    longitude: 0,
+    latitude: 37.78925,
+    longitude: -122.4344,
   },
   {
     id: '3',
@@ -35,8 +34,8 @@ const mockBathrooms = [
     rating: 4.2,
     type: "Public",
     address: "789 Elm St",
-    latitude: 0,
-    longitude: 0,
+    latitude: 37.78725,
+    longitude: -122.4314,
   },
   {
     id: '4',
@@ -45,8 +44,8 @@ const mockBathrooms = [
     rating: 3.5,
     type: "Gas Station",
     address: "101 Pine Rd",
-    latitude: 0,
-    longitude: 0,
+    latitude: 37.78625,
+    longitude: -122.4334,
   },
   {
     id: '5',
@@ -55,8 +54,8 @@ const mockBathrooms = [
     rating: 4.7,
     type: "Retail",
     address: "202 Maple Dr",
-    latitude: 0,
-    longitude: 0,
+    latitude: 37.78525,
+    longitude: -122.4354,
   },
   {
     id: '6',
@@ -65,22 +64,26 @@ const mockBathrooms = [
     rating: 3.2,
     type: "Public",
     address: "303 Park Ave",
-    latitude: 0,
-    longitude: 0,
+    latitude: 37.78425,
+    longitude: -122.4364,
   },
 ];
 
 export default function MapScreen() {
   const router = useRouter();
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [location, setLocation] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [bathrooms, setBathrooms] = useState(mockBathrooms);
-  const [activeTab, setActiveTab] = useState<'nearby' | 'visited' | 'map'>('map');
-  const [selectedBathroom, setSelectedBathroom] = useState<typeof mockBathrooms[0] | null>(null);
-  const mapRef = useRef<MapView | null>(null);
+  const [activeTab, setActiveTab] = useState(Platform.OS === 'web' ? 'nearby' : 'map');
+  const [selectedBathroom, setSelectedBathroom] = useState(null);
   
   useEffect(() => {
     (async () => {
+      if (Platform.OS === 'web') {
+        // On web, we'll just use the mock data without requesting location
+        return;
+      }
+      
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
@@ -90,31 +93,13 @@ export default function MapScreen() {
       try {
         let location = await Location.getCurrentPositionAsync({});
         setLocation(location);
-        
-        // Generate bathroom locations around the user's location
-        if (location) {
-          const { latitude, longitude } = location.coords;
-          const updatedBathrooms = mockBathrooms.map((bathroom, index) => {
-            // Create a small random offset for each bathroom
-            const latOffset = (Math.random() - 0.5) * 0.01;
-            const lngOffset = (Math.random() - 0.5) * 0.01;
-            
-            return {
-              ...bathroom,
-              latitude: latitude + latOffset,
-              longitude: longitude + lngOffset,
-            };
-          });
-          
-          setBathrooms(updatedBathrooms);
-        }
       } catch (error) {
         setErrorMsg('Could not get your location');
       }
     })();
   }, []);
   
-  const renderStars = (rating: number) => {
+  const renderStars = (rating) => {
     const fullStars = Math.floor(rating);
     const halfStar = rating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
@@ -132,7 +117,7 @@ export default function MapScreen() {
     );
   };
   
-  const handleNavigate = (bathroom: typeof mockBathrooms[0]) => {
+  const handleNavigate = (bathroom) => {
     // In a real app, you would open maps app with directions
     Alert.alert(
       "Navigate to Bathroom",
@@ -153,31 +138,28 @@ export default function MapScreen() {
     );
   };
 
-  const centerMapOnUser = () => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
+  // We'll conditionally import the MapView component only on native platforms
+  const MapComponent = () => {
+    if (Platform.OS === 'web') {
+      return (
+        <View style={styles.webMapPlaceholder}>
+          <MapPin size={48} color={Colors.primary.lightText} />
+          <Text style={styles.webMapTitle}>Map View</Text>
+          <Text style={styles.webMapText}>
+            The interactive map is available on the mobile app.
+            Please use the list view to see nearby bathrooms.
+          </Text>
+          <TouchableOpacity 
+            style={styles.webMapButton}
+            onPress={() => setActiveTab('nearby')}
+          >
+            <Text style={styles.webMapButtonText}>View List</Text>
+          </TouchableOpacity>
+        </View>
+      );
     }
-  };
-
-  const handleMarkerPress = (bathroom: typeof mockBathrooms[0]) => {
-    setSelectedBathroom(bathroom);
     
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: bathroom.latitude,
-        longitude: bathroom.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 500);
-    }
-  };
-
-  const renderMap = () => {
+    // This code will only run on native platforms
     if (!location) {
       return (
         <View style={styles.loadingContainer}>
@@ -186,92 +168,124 @@ export default function MapScreen() {
       );
     }
 
-    return (
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
+    // We need to dynamically import MapView to avoid web errors
+    const MapViewComponent = () => {
+      const { default: MapView, Marker, Callout, PROVIDER_GOOGLE } = require('react-native-maps');
+      const mapRef = useRef(null);
+      
+      const centerMapOnUser = () => {
+        if (location && mapRef.current) {
+          mapRef.current.animateToRegion({
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
-          }}
-          showsUserLocation
-          showsMyLocationButton={false}
-        >
-          {bathrooms.map((bathroom) => (
-            <Marker
-              key={bathroom.id}
-              coordinate={{
-                latitude: bathroom.latitude,
-                longitude: bathroom.longitude,
-              }}
-              title={bathroom.name}
-              description={bathroom.type}
-              onPress={() => handleMarkerPress(bathroom)}
-            >
-              <View style={[
-                styles.markerContainer,
-                selectedBathroom?.id === bathroom.id && styles.selectedMarker
-              ]}>
-                <MapPin size={24} color={Colors.primary.accent} />
-              </View>
-              <Callout tooltip>
-                <View style={styles.calloutContainer}>
-                  <Text style={styles.calloutTitle}>{bathroom.name}</Text>
-                  <Text style={styles.calloutSubtitle}>{bathroom.type}</Text>
-                  <View style={styles.calloutRating}>
-                    {renderStars(bathroom.rating)}
-                  </View>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
-        </MapView>
+          }, 1000);
+        }
+      };
+
+      const handleMarkerPress = (bathroom) => {
+        setSelectedBathroom(bathroom);
         
-        <View style={styles.mapControls}>
-          <TouchableOpacity 
-            style={styles.mapControlButton}
-            onPress={centerMapOnUser}
+        if (mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: bathroom.latitude,
+            longitude: bathroom.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }, 500);
+        }
+      };
+      
+      return (
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={{
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+            showsUserLocation
+            showsMyLocationButton={false}
           >
-            <Compass size={24} color={Colors.primary.accent} />
-          </TouchableOpacity>
-        </View>
-        
-        {selectedBathroom && (
-          <View style={styles.bathroomDetailCard}>
-            <View style={styles.bathroomInfo}>
-              <View style={styles.bathroomHeader}>
-                <Text style={styles.bathroomName}>{selectedBathroom.name}</Text>
-                <View style={styles.typeTag}>
-                  <Text style={styles.typeText}>{selectedBathroom.type}</Text>
+            {bathrooms.map((bathroom) => (
+              <Marker
+                key={bathroom.id}
+                coordinate={{
+                  latitude: bathroom.latitude,
+                  longitude: bathroom.longitude,
+                }}
+                title={bathroom.name}
+                description={bathroom.type}
+                onPress={() => handleMarkerPress(bathroom)}
+              >
+                <View style={[
+                  styles.markerContainer,
+                  selectedBathroom?.id === bathroom.id && styles.selectedMarker
+                ]}>
+                  <MapPin size={24} color={Colors.primary.accent} />
                 </View>
-              </View>
-              
-              <Text style={styles.bathroomAddress}>{selectedBathroom.address}</Text>
-              
-              <View style={styles.bathroomDetails}>
-                <View style={styles.ratingContainer}>
-                  {renderStars(selectedBathroom.rating)}
-                  <Text style={styles.ratingText}>{selectedBathroom.rating.toFixed(1)}</Text>
-                </View>
-                
-                <Text style={styles.distanceText}>{selectedBathroom.distance} mi</Text>
-              </View>
-            </View>
-            
+                <Callout tooltip>
+                  <View style={styles.calloutContainer}>
+                    <Text style={styles.calloutTitle}>{bathroom.name}</Text>
+                    <Text style={styles.calloutSubtitle}>{bathroom.type}</Text>
+                    <View style={styles.calloutRating}>
+                      {renderStars(bathroom.rating)}
+                    </View>
+                  </View>
+                </Callout>
+              </Marker>
+            ))}
+          </MapView>
+          
+          <View style={styles.mapControls}>
             <TouchableOpacity 
-              style={styles.navigateButton}
-              onPress={() => handleNavigate(selectedBathroom)}
+              style={styles.mapControlButton}
+              onPress={centerMapOnUser}
             >
-              <Navigation size={20} color="#FFFFFF" />
+              <Compass size={24} color={Colors.primary.accent} />
             </TouchableOpacity>
           </View>
-        )}
-      </View>
-    );
+          
+          {selectedBathroom && (
+            <View style={styles.bathroomDetailCard}>
+              <View style={styles.bathroomInfo}>
+                <View style={styles.bathroomHeader}>
+                  <Text style={styles.bathroomName}>{selectedBathroom.name}</Text>
+                  <View style={styles.typeTag}>
+                    <Text style={styles.typeText}>{selectedBathroom.type}</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.bathroomAddress}>{selectedBathroom.address}</Text>
+                
+                <View style={styles.bathroomDetails}>
+                  <View style={styles.ratingContainer}>
+                    {renderStars(selectedBathroom.rating)}
+                    <Text style={styles.ratingText}>{selectedBathroom.rating.toFixed(1)}</Text>
+                  </View>
+                  
+                  <Text style={styles.distanceText}>{selectedBathroom.distance} mi</Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.navigateButton}
+                onPress={() => handleNavigate(selectedBathroom)}
+              >
+                <Navigation size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      );
+    };
+    
+    return <MapViewComponent />;
   };
 
   const renderNearbyList = () => {
@@ -284,20 +298,10 @@ export default function MapScreen() {
             key={bathroom.id} 
             style={styles.bathroomCard}
             onPress={() => {
-              setActiveTab('map');
-              setSelectedBathroom(bathroom);
-              
-              // Small delay to ensure the map is rendered
-              setTimeout(() => {
-                if (mapRef.current) {
-                  mapRef.current.animateToRegion({
-                    latitude: bathroom.latitude,
-                    longitude: bathroom.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  }, 500);
-                }
-              }, 300);
+              if (Platform.OS !== 'web') {
+                setActiveTab('map');
+                setSelectedBathroom(bathroom);
+              }
             }}
           >
             <View style={styles.bathroomInfo}>
@@ -338,21 +342,23 @@ export default function MapScreen() {
         <Text style={styles.title}>Bathroom Finder</Text>
         
         <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === 'map' && styles.activeTab,
-            ]}
-            onPress={() => setActiveTab('map')}
-          >
-            <MapPin size={16} color={activeTab === 'map' ? '#FFFFFF' : Colors.primary.lightText} />
-            <Text style={[
-              styles.tabText,
-              activeTab === 'map' && styles.activeTabText,
-            ]}>
-              Map
-            </Text>
-          </TouchableOpacity>
+          {Platform.OS !== 'web' && (
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'map' && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab('map')}
+            >
+              <MapPin size={16} color={activeTab === 'map' ? '#FFFFFF' : Colors.primary.lightText} />
+              <Text style={[
+                styles.tabText,
+                activeTab === 'map' && styles.activeTabText,
+              ]}>
+                Map
+              </Text>
+            </TouchableOpacity>
+          )}
           
           <TouchableOpacity
             style={[
@@ -396,7 +402,7 @@ export default function MapScreen() {
           </Text>
         </View>
       ) : activeTab === 'map' ? (
-        renderMap()
+        <MapComponent />
       ) : activeTab === 'nearby' ? (
         renderNearbyList()
       ) : (
@@ -663,5 +669,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.primary.lightText,
     textAlign: 'center',
+  },
+  webMapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  webMapTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  webMapText: {
+    fontSize: 16,
+    color: Colors.primary.lightText,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  webMapButton: {
+    backgroundColor: Colors.primary.accent,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+  },
+  webMapButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
