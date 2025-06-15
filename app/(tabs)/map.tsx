@@ -5,8 +5,20 @@ import { MapPin, Navigation, Compass, List } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 
+// Define bathroom type
+interface Bathroom {
+  id: string;
+  name: string;
+  distance: number;
+  rating: number;
+  type: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
 // Mock data for nearby bathrooms
-const mockBathrooms = [
+const mockBathrooms: Bathroom[] = [
   {
     id: '1',
     name: "Starbucks",
@@ -71,11 +83,11 @@ const mockBathrooms = [
 
 export default function MapScreen() {
   const router = useRouter();
-  const [location, setLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [bathrooms, setBathrooms] = useState(mockBathrooms);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [bathrooms, setBathrooms] = useState<Bathroom[]>(mockBathrooms);
   const [activeTab, setActiveTab] = useState(Platform.OS === 'web' ? 'nearby' : 'map');
-  const [selectedBathroom, setSelectedBathroom] = useState(null);
+  const [selectedBathroom, setSelectedBathroom] = useState<Bathroom | null>(null);
   
   useEffect(() => {
     (async () => {
@@ -86,7 +98,7 @@ export default function MapScreen() {
       
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
+        setErrorMsg("Permission to access location was denied");
         return;
       }
 
@@ -94,12 +106,12 @@ export default function MapScreen() {
         let location = await Location.getCurrentPositionAsync({});
         setLocation(location);
       } catch (error) {
-        setErrorMsg('Could not get your location');
+        setErrorMsg("Could not get your location");
       }
     })();
   }, []);
   
-  const renderStars = (rating) => {
+  const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
     const halfStar = rating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
@@ -117,7 +129,7 @@ export default function MapScreen() {
     );
   };
   
-  const handleNavigate = (bathroom) => {
+  const handleNavigate = (bathroom: Bathroom) => {
     // In a real app, you would open maps app with directions
     Alert.alert(
       "Navigate to Bathroom",
@@ -171,7 +183,9 @@ export default function MapScreen() {
     // We need to dynamically import MapView to avoid web errors
     const MapViewComponent = () => {
       const { default: MapView, Marker, Callout, PROVIDER_GOOGLE } = require('react-native-maps');
-      const mapRef = useRef(null);
+      
+      // Define the ref with the correct type
+      const mapRef = useRef<any>(null);
       
       const centerMapOnUser = () => {
         if (location && mapRef.current) {
@@ -184,7 +198,7 @@ export default function MapScreen() {
         }
       };
 
-      const handleMarkerPress = (bathroom) => {
+      const handleMarkerPress = (bathroom: Bathroom) => {
         setSelectedBathroom(bathroom);
         
         if (mapRef.current) {
