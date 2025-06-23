@@ -34,7 +34,10 @@ export default function TrackerScreen() {
     
     if (!result.canceled) {
       setImage(result.assets[0].uri);
-      router.push('/add-entry');
+      router.push({
+        pathname: '/analyze-image',
+        params: { imageUri: result.assets[0].uri }
+      });
     }
   };
   
@@ -56,7 +59,7 @@ export default function TrackerScreen() {
     if (!result.canceled) {
       setImage(result.assets[0].uri);
       router.push({
-        pathname: '/add-entry',
+        pathname: '/analyze-image',
         params: { imageUri: result.assets[0].uri }
       });
     }

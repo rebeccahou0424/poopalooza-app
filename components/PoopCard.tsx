@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { poopTypes, poopVolumes, poopFeelings } from '@/constants/poopTypes';
+import { poopTypes, poopVolumes, poopFeelings, poopColors } from '@/constants/poopTypes';
 import Colors from '@/constants/colors';
 import { PoopEntry } from '@/types/poop';
 import { formatDate } from '@/utils/dateUtils';
@@ -17,6 +17,7 @@ export default function PoopCard({ entry, onPress, showImage = false }: PoopCard
   const poopType = poopTypes.find(type => type.id === entry.type) || poopTypes[0];
   const poopVolume = poopVolumes.find(vol => vol.id === entry.volume) || poopVolumes[0];
   const poopFeeling = poopFeelings.find(feel => feel.id === entry.feeling) || poopFeelings[0];
+  const poopColor = poopColors.find(col => col.id === entry.color) || poopColors[0];
   
   const formatDuration = (seconds: number) => {
     if (seconds === 0) return "No duration recorded";
@@ -57,15 +58,19 @@ export default function PoopCard({ entry, onPress, showImage = false }: PoopCard
         </View>
       </View>
       
-      {showImage && entry.imageUri && (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: entry.imageUri }}
-            style={styles.image}
-            contentFit="cover"
-          />
-        </View>
-      )}
+      {showImage ? (
+        entry.imageUri ? (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: entry.imageUri }}
+              style={styles.image}
+              contentFit="cover"
+            />
+          </View>
+        ) : (
+          <View style={[styles.colorIndicator, { backgroundColor: poopColor.color }]} />
+        )
+      ) : null}
     </Pressable>
   );
 }
@@ -130,5 +135,13 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  colorIndicator: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginLeft: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });

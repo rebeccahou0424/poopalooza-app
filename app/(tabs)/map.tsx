@@ -182,121 +182,140 @@ export default function MapScreen() {
 
     // We need to dynamically import MapView to avoid web errors
     const MapViewComponent = () => {
-      const { default: MapView, Marker, Callout, PROVIDER_GOOGLE } = require('react-native-maps');
-      
-      // Define the ref with the correct type
-      const mapRef = useRef<any>(null);
-      
-      const centerMapOnUser = () => {
-        if (location && mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }, 1000);
-        }
-      };
-
-      const handleMarkerPress = (bathroom: Bathroom) => {
-        setSelectedBathroom(bathroom);
+      try {
+        // Dynamic import to avoid web errors
+        const MapView = require('react-native-maps').default;
+        const { Marker, Callout } = require('react-native-maps');
         
-        if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: bathroom.latitude,
-            longitude: bathroom.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }, 500);
-        }
-      };
-      
-      return (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={{
+        // Define the ref with the correct type
+        const mapRef = useRef<any>(null);
+        
+        const centerMapOnUser = () => {
+          if (location && mapRef.current) {
+            mapRef.current.animateToRegion({
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
               latitudeDelta: 0.01,
               longitudeDelta: 0.01,
-            }}
-            showsUserLocation
-            showsMyLocationButton={false}
-          >
-            {bathrooms.map((bathroom) => (
-              <Marker
-                key={bathroom.id}
-                coordinate={{
-                  latitude: bathroom.latitude,
-                  longitude: bathroom.longitude,
-                }}
-                title={bathroom.name}
-                description={bathroom.type}
-                onPress={() => handleMarkerPress(bathroom)}
-              >
-                <View style={[
-                  styles.markerContainer,
-                  selectedBathroom?.id === bathroom.id && styles.selectedMarker
-                ]}>
-                  <MapPin size={24} color={Colors.primary.accent} />
-                </View>
-                <Callout tooltip>
-                  <View style={styles.calloutContainer}>
-                    <Text style={styles.calloutTitle}>{bathroom.name}</Text>
-                    <Text style={styles.calloutSubtitle}>{bathroom.type}</Text>
-                    <View style={styles.calloutRating}>
-                      {renderStars(bathroom.rating)}
-                    </View>
-                  </View>
-                </Callout>
-              </Marker>
-            ))}
-          </MapView>
+            }, 1000);
+          }
+        };
+
+        const handleMarkerPress = (bathroom: Bathroom) => {
+          setSelectedBathroom(bathroom);
           
-          <View style={styles.mapControls}>
-            <TouchableOpacity 
-              style={styles.mapControlButton}
-              onPress={centerMapOnUser}
+          if (mapRef.current) {
+            mapRef.current.animateToRegion({
+              latitude: bathroom.latitude,
+              longitude: bathroom.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }, 500);
+          }
+        };
+        
+        return (
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              initialRegion={{
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+              showsUserLocation
+              showsMyLocationButton={false}
             >
-              <Compass size={24} color={Colors.primary.accent} />
-            </TouchableOpacity>
-          </View>
-          
-          {selectedBathroom && (
-            <View style={styles.bathroomDetailCard}>
-              <View style={styles.bathroomInfo}>
-                <View style={styles.bathroomHeader}>
-                  <Text style={styles.bathroomName}>{selectedBathroom.name}</Text>
-                  <View style={styles.typeTag}>
-                    <Text style={styles.typeText}>{selectedBathroom.type}</Text>
+              {bathrooms.map((bathroom) => (
+                <Marker
+                  key={bathroom.id}
+                  coordinate={{
+                    latitude: bathroom.latitude,
+                    longitude: bathroom.longitude,
+                  }}
+                  title={bathroom.name}
+                  description={bathroom.type}
+                  onPress={() => handleMarkerPress(bathroom)}
+                >
+                  <View style={[
+                    styles.markerContainer,
+                    selectedBathroom?.id === bathroom.id && styles.selectedMarker
+                  ]}>
+                    <MapPin size={24} color={Colors.primary.accent} />
                   </View>
-                </View>
-                
-                <Text style={styles.bathroomAddress}>{selectedBathroom.address}</Text>
-                
-                <View style={styles.bathroomDetails}>
-                  <View style={styles.ratingContainer}>
-                    {renderStars(selectedBathroom.rating)}
-                    <Text style={styles.ratingText}>{selectedBathroom.rating.toFixed(1)}</Text>
-                  </View>
-                  
-                  <Text style={styles.distanceText}>{selectedBathroom.distance} mi</Text>
-                </View>
-              </View>
-              
+                  <Callout tooltip>
+                    <View style={styles.calloutContainer}>
+                      <Text style={styles.calloutTitle}>{bathroom.name}</Text>
+                      <Text style={styles.calloutSubtitle}>{bathroom.type}</Text>
+                      <View style={styles.calloutRating}>
+                        {renderStars(bathroom.rating)}
+                      </View>
+                    </View>
+                  </Callout>
+                </Marker>
+              ))}
+            </MapView>
+            
+            <View style={styles.mapControls}>
               <TouchableOpacity 
-                style={styles.navigateButton}
-                onPress={() => handleNavigate(selectedBathroom)}
+                style={styles.mapControlButton}
+                onPress={centerMapOnUser}
               >
-                <Navigation size={20} color="#FFFFFF" />
+                <Compass size={24} color={Colors.primary.accent} />
               </TouchableOpacity>
             </View>
-          )}
-        </View>
-      );
+            
+            {selectedBathroom && (
+              <View style={styles.bathroomDetailCard}>
+                <View style={styles.bathroomInfo}>
+                  <View style={styles.bathroomHeader}>
+                    <Text style={styles.bathroomName}>{selectedBathroom.name}</Text>
+                    <View style={styles.typeTag}>
+                      <Text style={styles.typeText}>{selectedBathroom.type}</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.bathroomAddress}>{selectedBathroom.address}</Text>
+                  
+                  <View style={styles.bathroomDetails}>
+                    <View style={styles.ratingContainer}>
+                      {renderStars(selectedBathroom.rating)}
+                      <Text style={styles.ratingText}>{selectedBathroom.rating.toFixed(1)}</Text>
+                    </View>
+                    
+                    <Text style={styles.distanceText}>{selectedBathroom.distance} mi</Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.navigateButton}
+                  onPress={() => handleNavigate(selectedBathroom)}
+                >
+                  <Navigation size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        );
+      } catch (error) {
+        console.error("Error loading map:", error);
+        return (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Could not load map</Text>
+            <Text style={styles.errorSubtext}>
+              Please try using the list view instead.
+            </Text>
+            <TouchableOpacity 
+              style={styles.webMapButton}
+              onPress={() => setActiveTab('nearby')}
+            >
+              <Text style={styles.webMapButtonText}>View List</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      }
     };
     
     return <MapViewComponent />;

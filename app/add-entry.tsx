@@ -13,27 +13,44 @@ import { getTimeOfDay } from '@/utils/dateUtils';
 
 export default function AddEntryScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ imageUri?: string }>();
+  const params = useLocalSearchParams<{ 
+    imageUri?: string, 
+    type?: string, 
+    volume?: string, 
+    color?: string,
+    analysisDetails?: string
+  }>();
   const { addEntry, stopTimer, currentTimer, resetTimer } = usePoopStore();
   
   const [name, setName] = useState(`${getTimeOfDay()} Poop`);
-  const [type, setType] = useState(4); // Default to type 4 (normal)
-  const [volume, setVolume] = useState(2); // Default to medium
+  const [type, setType] = useState(params.type ? parseInt(params.type) : 4);
+  const [volume, setVolume] = useState(params.volume ? parseInt(params.volume) : 2);
   const [feeling, setFeeling] = useState(1); // Default to easy
-  const [color, setColor] = useState(1); // Default to brown
+  const [color, setColor] = useState(params.color ? parseInt(params.color) : 1);
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(0);
+  const [analysisDetails, setAnalysisDetails] = useState('');
   
   useEffect(() => {
     if (currentTimer) {
       setDuration(currentTimer);
     }
-  }, [currentTimer]);
+    
+    if (params.analysisDetails) {
+      setAnalysisDetails(decodeURIComponent(params.analysisDetails));
+      
+      // If we have analysis details, add them to the notes
+      if (decodeURIComponent(params.analysisDetails).trim() !== '') {
+        setNotes(`AI Analysis: ${decodeURIComponent(params.analysisDetails)}\n\n`);
+      }
+    }
+  }, [currentTimer, params.analysisDetails]);
   
   const handleSave = () => {
     const newEntry = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
+      name: name,
       type,
       volume,
       feeling,
