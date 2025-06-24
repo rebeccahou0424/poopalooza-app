@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   TextInput, 
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePoopStore } from '@/store/poopStore';
@@ -46,7 +47,7 @@ export default function LibraryScreen() {
     filterEntries(activeFilter, searchQuery);
   }, [entries, activeFilter, searchQuery]);
   
-  const filterEntries = (filter, query = '') => {
+  const filterEntries = (filter: string, query = '') => {
     setIsLoading(true);
     
     // Apply search query filter
