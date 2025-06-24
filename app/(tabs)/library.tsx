@@ -1,20 +1,74 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  TextInput, 
+  Platform,
+  ActivityIndicator
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePoopStore } from '@/store/poopStore';
 import Colors from '@/constants/colors';
 import PoopCard from '@/components/PoopCard';
-import { Plus, Eye, EyeOff, FileDown } from 'lucide-react-native';
+import { 
+  Plus, 
+  Eye, 
+  EyeOff, 
+  FileDown, 
+  Search,
+  Calendar as CalendarIcon,
+  List
+} from 'lucide-react-native';
 import Button from '@/components/Button';
+import { Image } from 'expo-image';
+import { poopFeelings } from '@/constants/poopTypes';
+import { formatDate } from '@/utils/dateUtils';
 
 export default function LibraryScreen() {
   const router = useRouter();
   const { entries } = usePoopStore();
-  const [showImages, setShowImages] = useState(false);
   
+  const [showImages, setShowImages] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredEntries, setFilteredEntries] = useState(entries);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Sort entries by date (newest first)
   const sortedEntries = [...entries].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+  
+  useEffect(() => {
+    filterEntries(activeFilter, searchQuery);
+  }, [entries, activeFilter, searchQuery]);
+  
+  const filterEntries = (filter, query = '') => {
+    setIsLoading(true);
+    
+    // Apply search query filter
+    let results = sortedEntries.filter(entry => {
+      const entryName = entry.name?.toLowerCase() || '';
+      const entryNotes = entry.notes?.toLowerCase() || '';
+      const searchLower = query.toLowerCase();
+      
+      return entryName.includes(searchLower) || entryNotes.includes(searchLower);
+    });
+    
+    // Apply feeling filter
+    if (filter !== 'all') {
+      const feelingId = poopFeelings.find(f => f.name.toLowerCase() === filter)?.id;
+      if (feelingId) {
+        results = results.filter(entry => entry.feeling === feelingId);
+      }
+    }
+    
+    setFilteredEntries(results);
+    setIsLoading(false);
+  };
   
   const handleAddNew = () => {
     router.push('/add-entry');
@@ -35,18 +89,50 @@ export default function LibraryScreen() {
     // In a real app, you would implement export functionality
     alert('Export functionality would be implemented here');
   };
+  
+  const handleFilterPress = (filter: string) => {
+    setActiveFilter(filter);
+    filterEntries(filter, searchQuery);
+  };
+  
+  const renderFilterButton = (label: string, filter: string) => (
+    <TouchableOpacity
+      style={[
+        styles.filterButton,
+        activeFilter === filter && styles.activeFilterButton
+      ]}
+      onPress={() => handleFilterPress(filter)}
+    >
+      <Text 
+        style={[
+          styles.filterButtonText,
+          activeFilter === filter && styles.activeFilterText
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Library</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.title}>Library</Text>
+          <Text style={styles.resultCount}>
+            {filteredEntries.length} of {entries.length} entries
+          </Text>
+        </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity 
-            style={styles.headerButton}
+            style={[
+              styles.headerButton,
+              showImages && styles.activeHeaderButton
+            ]}
             onPress={toggleShowImages}
           >
             {showImages ? (
-              <Eye size={20} color={Colors.primary.accent} />
+              <Eye size={20} color={showImages ? "#FFFFFF" : Colors.primary.accent} />
             ) : (
               <EyeOff size={20} color={Colors.primary.accent} />
             )}
@@ -61,25 +147,61 @@ export default function LibraryScreen() {
         </View>
       </View>
       
-      {sortedEntries.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No entries yet</Text>
-          <Text style={styles.emptySubtext}>Start tracking your poops to see them here</Text>
-          <Button 
-            title="Add Your First Poop" 
-            onPress={handleAddNew}
-            style={styles.addButton}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Search size={18} color={Colors.primary.lightText} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search entries..."
+            placeholderTextColor={Colors.primary.lightText}
+            value={searchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
           />
+        </View>
+        
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {renderFilterButton('All', 'all')}
+          {renderFilterButton('Easy', 'easy')}
+          {renderFilterButton('Moderate', 'moderate')}
+          {renderFilterButton('Difficult', 'difficult')}
+          {renderFilterButton('Incomplete', 'incomplete')}
+        </ScrollView>
+      </View>
+      
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary.accent} />
+        </View>
+      ) : filteredEntries.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No entries found</Text>
+          <Text style={styles.emptySubtext}>
+            {entries.length === 0 
+              ? "Start tracking your poops to see them here" 
+              : "Try adjusting your search or filters"}
+          </Text>
+          {entries.length === 0 && (
+            <Button 
+              title="Add Your First Poop" 
+              onPress={handleAddNew}
+              style={styles.addButton}
+            />
+          )}
         </View>
       ) : (
         <FlatList
-          data={sortedEntries}
+          data={filteredEntries}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <PoopCard 
               entry={item} 
               onPress={() => handleEntryPress(item.id)}
               showImage={showImages}
+              style={styles.poopCard}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -111,10 +233,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.primary.border,
   },
+  headerTitleContainer: {
+    flex: 1,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.primary.text,
+  },
+  resultCount: {
+    fontSize: 12,
+    color: Colors.primary.lightText,
+    marginTop: 2,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -128,8 +258,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  activeHeaderButton: {
+    backgroundColor: Colors.primary.accent,
+  },
+  searchSection: {
+    padding: 16,
+    backgroundColor: Colors.primary.card,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primary.border,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: Colors.primary.text,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 16,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Colors.primary.border,
+  },
+  activeFilterButton: {
+    backgroundColor: Colors.primary.accent,
+    borderColor: Colors.primary.accent,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: Colors.primary.text,
+  },
+  activeFilterText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
   listContent: {
     padding: 16,
+    paddingBottom: 80, // Extra padding for FAB
+  },
+  poopCard: {
+    marginBottom: 12,
   },
   emptyContainer: {
     flex: 1,
@@ -167,5 +350,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

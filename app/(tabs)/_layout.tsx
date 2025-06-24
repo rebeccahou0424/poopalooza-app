@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import Colors from '@/constants/colors';
-import { MapPin, BookOpen, Calendar, BarChart, Clock } from 'lucide-react-native';
+import { BookOpen, BarChart, MapPin, Clock, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -44,15 +44,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="calendar"
-        options={{
-          title: 'Calendar',
-          tabBarIcon: ({ color, size }) => (
-            <Calendar size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="stats"
         options={{
           title: 'Stats',
@@ -67,6 +58,15 @@ export default function TabLayout() {
           title: 'Map',
           tabBarIcon: ({ color, size }) => (
             <MapPin size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <User size={size} color={color} />
           ),
         }}
       />

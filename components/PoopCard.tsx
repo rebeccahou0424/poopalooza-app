@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { poopTypes, poopVolumes, poopFeelings, poopColors } from '@/constants/poopTypes';
 import Colors from '@/constants/colors';
@@ -11,9 +11,10 @@ interface PoopCardProps {
   entry: PoopEntry;
   onPress?: () => void;
   showImage?: boolean;
+  style?: ViewStyle;
 }
 
-export default function PoopCard({ entry, onPress, showImage = false }: PoopCardProps) {
+export default function PoopCard({ entry, onPress, showImage = false, style }: PoopCardProps) {
   const poopType = poopTypes.find(type => type.id === entry.type) || poopTypes[0];
   const poopVolume = poopVolumes.find(vol => vol.id === entry.volume) || poopVolumes[0];
   const poopFeeling = poopFeelings.find(feel => feel.id === entry.feeling) || poopFeelings[0];
@@ -25,52 +26,55 @@ export default function PoopCard({ entry, onPress, showImage = false }: PoopCard
     const remainingSeconds = seconds % 60;
     return `${minutes}m ${remainingSeconds}s`;
   };
+  
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <Pressable 
-      style={styles.container}
+      style={[styles.container, style]}
       onPress={onPress}
     >
-      <View style={styles.content}>
+      {showImage && entry.imageUri && (
+        <Image
+          source={{ uri: entry.imageUri }}
+          style={styles.image}
+          contentFit="cover"
+        />
+      )}
+      
+      <View style={styles.header}>
         <Text style={styles.title}>
           {entry.name || `${formatDate(entry.date)} Poop`}
         </Text>
-        
-        <View style={styles.durationRow}>
-          <Clock size={18} color="#9E9E9E" style={styles.clockIcon} />
-          <Text style={styles.durationText}>
-            {formatDuration(entry.duration)}
-          </Text>
-        </View>
-        
-        <View style={styles.tagsContainer}>
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>{poopFeeling.name.toLowerCase()}</Text>
-          </View>
-          
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>Type {poopType.id}</Text>
-          </View>
-          
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>{poopVolume.name.toLowerCase()}</Text>
-          </View>
-        </View>
+        <Text style={styles.time}>{formatTime(entry.date)}</Text>
       </View>
       
-      {showImage ? (
-        entry.imageUri ? (
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: entry.imageUri }}
-              style={styles.image}
-              contentFit="cover"
-            />
-          </View>
-        ) : (
-          <View style={[styles.colorIndicator, { backgroundColor: poopColor.color }]} />
-        )
-      ) : null}
+      <Text style={styles.durationText}>
+        {formatDuration(entry.duration)}
+      </Text>
+      
+      <View style={styles.tagsContainer}>
+        <View style={[
+          styles.tag, 
+          styles[`${poopFeeling.name.toLowerCase()}Tag` as keyof typeof styles] || styles.defaultTag
+        ]}>
+          <Text style={styles.tagText}>{poopFeeling.name.toLowerCase()}</Text>
+        </View>
+        
+        <View style={[styles.tag, styles.typeTag]}>
+          <Text style={styles.tagText}>Type {poopType.id}</Text>
+        </View>
+        
+        <View style={[
+          styles.tag, 
+          styles[`${poopVolume.name.toLowerCase()}Tag` as keyof typeof styles] || styles.defaultTag
+        ]}>
+          <Text style={styles.tagText}>{poopVolume.name.toLowerCase()}</Text>
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -79,36 +83,40 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    marginBottom: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F0E6D2',
   },
-  content: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2E3A59',
-    marginBottom: 8,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  image: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
     marginBottom: 12,
   },
-  clockIcon: {
-    marginRight: 6,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2E3A59',
+  },
+  time: {
+    fontSize: 12,
+    color: Colors.primary.lightText,
   },
   durationText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#9E9E9E',
+    marginBottom: 12,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -116,32 +124,40 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  defaultTag: {
     backgroundColor: '#FFF2C2',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  },
+  easyTag: {
+    backgroundColor: '#E8F5E8',
+  },
+  moderateTag: {
+    backgroundColor: '#FFF3E0',
+  },
+  difficultTag: {
+    backgroundColor: '#FFEBEE',
+  },
+  incompleteTag: {
+    backgroundColor: '#E1F5FE',
+  },
+  typeTag: {
+    backgroundColor: '#F3E5F5',
+  },
+  smallTag: {
+    backgroundColor: '#E8F5E9',
+  },
+  mediumTag: {
+    backgroundColor: '#FFF3E0',
+  },
+  largeTag: {
+    backgroundColor: '#FFEBEE',
   },
   tagText: {
-    fontSize: 14,
-    color: '#8B4513',
-  },
-  imageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    marginLeft: 12,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  colorIndicator: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginLeft: 12,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#2C2C2C',
   },
 });
